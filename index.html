@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多平台支付计算器 (明细增强版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; background-color: #f3f4f6; }
+        .card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .best-choice { border: 2px solid #10b981; background-color: #ecfdf5; transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1); z-index: 10; }
+        .invalid-choice { opacity: 0.7; background-color: #f9fafb; border: 1px dashed #d1d5db; }
+        .sim-input:focus { ring: 2px solid #3b82f6; outline: none; }
+    </style>
+</head>
+<body class="p-4 md:p-8 bg-gray-50">
+
+    <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-gray-800 flex items-center justify-center gap-3">
+                <span>🧮</span> 多平台支付 · 费用明细计算器
+            </h1>
+            <p class="text-gray-500 mt-2 text-lg">全自动比价 (含个税/服务费明细) + DIY 模拟</p>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
+            <label class="block text-gray-700 text-sm font-bold mb-3" for="netAmount">
+                第一步：输入客户实际到手总金额 (Net Amount)
+            </label>
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="relative flex-grow">
+                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <span class="text-gray-500 text-xl font-bold">¥</span>
+                    </div>
+                    <input class="shadow-sm appearance-none border border-gray-300 rounded-lg w-full py-3 pl-10 pr-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 text-2xl font-bold" 
+                           id="netAmount" type="number" placeholder="例如: 5000" onkeydown="if(event.keyCode==13) calculateAll()">
+                </div>
+                <button onclick="calculateAll()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg focus:outline-none transition duration-150 shadow-md text-lg whitespace-nowrap">
+                    开始计算
+                </button>
+            </div>
+             <div class="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500 flex flex-wrap gap-4">
+                <span class="flex items-center gap-1">⚠️ 基金会起付: ¥1000</span>
+                <span class="flex items-center gap-1">⚠️ 学协会起付: ¥1000</span>
+                <span class="flex items-center gap-1">⚠️ 第三方起付: ¥800</span>
+            </div>
+        </div>
+
+        <div id="resultsArea" class="hidden space-y-8">
+            
+            <div>
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    🤖 自动推荐方案 <span class="text-sm font-normal text-gray-500">(按成本由低到高)</span>
+                </h2>
+                <div id="cardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl border border-blue-100 overflow-hidden">
+                <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        🛠️ DIY 手动组合模拟器
+                    </h2>
+                    <span class="text-xs bg-slate-600 px-2 py-1 rounded text-slate-200 hidden md:inline">输入各平台金额，自动配平</span>
+                </div>
+                
+                <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            
+                            <div class="bg-rose-50 p-4 rounded-lg border border-rose-100 relative">
+                                <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                                    <span class="w-6 h-6 text-rose-600"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H4.5a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg> </span>
+                                    基金会 <span class="text-xs font-normal text-gray-400">(Min: 1000)</span>
+                                </label>
+                                <input type="number" id="manual_foundation" oninput="updateManualCalc()" class="w-full p-2 border rounded text-lg font-bold text-gray-800 focus:ring-rose-500 focus:border-rose-500" placeholder="0">
+                                <div id="msg_foundation" class="text-xs text-rose-600 mt-1 h-4"></div>
+                            </div>
+
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 relative">
+                                <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                                    <span class="w-6 h-6 text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg> </span>
+                                    第三方 <span class="text-xs font-normal text-gray-400">(Min: 800)</span>
+                                </label>
+                                <input type="number" id="manual_thirdparty" oninput="updateManualCalc()" class="w-full p-2 border rounded text-lg font-bold text-gray-800 focus:ring-blue-500 focus:border-blue-500" placeholder="0">
+                                <div id="msg_thirdparty" class="text-xs text-rose-600 mt-1 h-4"></div>
+                            </div>
+
+                            <div class="bg-purple-50 p-4 rounded-lg border border-purple-100 relative">
+                                <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                                    <span class="w-6 h-6 text-purple-600"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" /></svg> </span>
+                                    学协会 <span class="text-xs font-normal text-gray-400">(Min: 1000)</span>
+                                </label>
+                                <input type="number" id="manual_association" oninput="updateManualCalc()" class="w-full p-2 border rounded text-lg font-bold text-gray-800 focus:ring-purple-500 focus:border-purple-500" placeholder="0">
+                                <div id="msg_association" class="text-xs text-rose-600 mt-1 h-4"></div>
+                            </div>
+
+                            <div class="bg-green-50 p-4 rounded-lg border border-green-100 relative opacity-90">
+                                <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                                    <span class="w-6 h-6 text-green-600"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg> </span>
+                                    代收代付 <span class="text-xs font-normal text-green-600">(自动兜底)</span>
+                                </label>
+                                <input type="text" id="manual_collection" disabled class="w-full p-2 border rounded text-lg font-bold text-green-700 bg-green-100/50 cursor-not-allowed" value="---">
+                                <div class="text-xs text-green-600 mt-1 h-4 flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z" clip-rule="evenodd"/></svg>
+                                    无需输入，自动计算
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-xl p-5 border border-gray-200 flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-gray-600 uppercase text-xs tracking-wider mb-4">DIY 方案实时预览</h3>
+                            <div class="mb-6 text-center">
+                                <div class="text-sm text-gray-500 mb-1">自定义总成本</div>
+                                <div id="manualTotalCost" class="text-4xl font-extrabold text-indigo-600">¥0.00</div>
+                            </div>
+                            <div class="space-y-3 text-sm border-t border-gray-200 pt-4">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500">客户总到手:</span>
+                                    <span class="font-bold text-gray-800" id="manualTotalNet">¥0.00</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500">总个税:</span>
+                                    <span class="font-medium text-orange-500" id="manualTotalTax">¥0.00</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500">总服务费:</span>
+                                    <span class="font-medium text-blue-600" id="manualTotalFee">¥0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="manualError" class="mt-4 text-center text-red-500 text-sm font-bold hidden bg-red-50 p-2 rounded">
+                            总分配金额已超出客户总额!
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+<script>
+    // --- 配置与图标 ---
+    const icons = {
+        association: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-purple-600"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" /></svg>`,
+        foundation: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-rose-600"><path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H4.5a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>`,
+        thirdparty: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-blue-600"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>`,
+        collection: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-green-600"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>`,
+        combo: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-amber-500"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`
+    };
+
+    const platforms = [
+        { id: 'association', name: '学协会', icon: icons.association, multiplier: 1.1672, hasTax: true, minPay: 1000, desc: '费率16.72% + 个税' },
+        { id: 'foundation', name: '基金会', icon: icons.foundation, multiplier: 1.08, hasTax: true, minPay: 1000, desc: '费率8% + 个税' },
+        { id: 'thirdparty', name: '第三方', icon: icons.thirdparty, multiplier: 1.11, hasTax: true, minPay: 800, desc: '费率11% + 个税' },
+        { id: 'collection', name: '代收代付', icon: icons.collection, multiplier: 1.135, hasTax: false, minPay: 0, desc: '费率13.5% (无个税)' }
+    ];
+
+    // --- 核心算法 ---
+    function calculateGrossFromNet(net) {
+        let gross = 0, tax = 0;
+        if (net <= 800) gross = net;
+        else if (net <= 3360) gross = (net - 160) / 0.8;
+        else if (net <= 21000) gross = net / 0.84;
+        else if (net <= 49500) gross = (net - 2000) / 0.76;
+        else gross = (net - 7000) / 0.68;
+        tax = gross - net;
+        return { gross, tax };
+    }
+
+    function getSinglePlatformCost(platform, netAmount) {
+        if (netAmount <= 0) return { totalCost: 0, taxAmount: 0, platformFee: 0, grossAmount: 0 };
+        
+        let calcRes = { gross: netAmount, tax: 0 };
+        if (platform.hasTax) calcRes = calculateGrossFromNet(netAmount);
+        
+        const totalCost = calcRes.gross * platform.multiplier;
+        const platformFee = totalCost - calcRes.gross;
+        
+        return {
+            ...platform,
+            netAmount,
+            taxAmount: calcRes.tax,
+            grossAmount: calcRes.gross,
+            platformFee,
+            totalCost,
+            isValid: netAmount >= platform.minPay
+        };
+    }
+
+    function formatMoney(num) {
+        return '¥' + num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // --- 页面逻辑 ---
+
+    function calculateAll() {
+        const netInput = document.getElementById('netAmount').value;
+        const netAmount = parseFloat(netInput);
+
+        if (isNaN(netAmount) || netAmount <= 0) {
+            alert("请输入有效金额");
+            return;
+        }
+
+        document.getElementById('resultsArea').classList.remove('hidden');
+        runAutoRecommendations(netAmount);
+        initManualSimulator(netAmount);
+    }
+
+    function runAutoRecommendations(netAmount) {
+        let results = [];
+        // 单平台
+        platforms.forEach(p => {
+             const res = getSinglePlatformCost(p, netAmount);
+             results.push({ ...res, isCombo: false });
+        });
+
+        // 智能组合 (Min-Max)
+        const P_FOUND = platforms.find(p => p.id === 'foundation');
+        const P_THIRD = platforms.find(p => p.id === 'thirdparty');
+        const P_COLL = platforms.find(p => p.id === 'collection');
+
+        let combos = [];
+        if (netAmount >= (P_FOUND.minPay + P_THIRD.minPay)) 
+            combos.push([{p:P_FOUND, amt:P_FOUND.minPay}, {p:P_THIRD, amt:P_THIRD.minPay}, {p:P_COLL, amt:netAmount - P_FOUND.minPay - P_THIRD.minPay}]);
+        if (netAmount >= P_FOUND.minPay) 
+            combos.push([{p:P_FOUND, amt:P_FOUND.minPay}, {p:P_COLL, amt:netAmount - P_FOUND.minPay}]);
+        if (netAmount >= P_THIRD.minPay) 
+            combos.push([{p:P_THIRD, amt:P_THIRD.minPay}, {p:P_COLL, amt:netAmount - P_THIRD.minPay}]);
+
+        combos.forEach(split => {
+            let totalC = 0, totalT = 0, totalF = 0, details = [];
+            split.filter(s => s.amt > 0).forEach(s => {
+                const r = getSinglePlatformCost(s.p, s.amt);
+                totalC += r.totalCost; totalT += r.taxAmount; totalF += r.platformFee;
+                details.push(r);
+            });
+            if(details.length > 1) {
+                results.push({
+                    name: '智能组合方案', icon: icons.combo, desc: '自动最优配比', 
+                    isValid: true, totalCost: totalC, netAmount, taxAmount: totalT, platformFee: totalF, isCombo: true, details
+                });
+            }
+        });
+
+        results.sort((a, b) => a.totalCost - b.totalCost);
+        renderAutoCards(results);
+    }
+
+    function renderAutoCards(results) {
+        const container = document.getElementById('cardsContainer');
+        container.innerHTML = '';
+        results.forEach((r, idx) => {
+            const isBest = r.isValid && idx === 0;
+            const cardClass = !r.isValid ? 'invalid-choice' : (isBest ? 'best-choice bg-white' : 'bg-white border border-gray-200');
+            const badge = !r.isValid ? '<span class="text-red-500 text-xs ml-2 font-bold">起付线不足</span>' : (isBest ? '<span class="text-green-600 text-xs ml-2 font-bold">✅ 推荐</span>' : '');
+            
+            // 组合明细
+            let footer = '';
+            if (r.isCombo) {
+                footer = `<div class="mt-4 pt-3 border-t border-gray-100 bg-gray-50 -mx-5 px-5 pb-1">
+                    <div class="text-xs font-bold text-gray-500 mb-2">组合明细:</div>
+                    ${r.details.map(d => `<div class="flex justify-between text-xs text-gray-600 mb-1"><span>${d.name}</span><span>${formatMoney(d.netAmount)}</span></div>`).join('')}
+                </div>`;
+            }
+
+            // 新增：关键明细数据 (客户到手、个税、服务费)
+            const detailSection = `
+                <div class="space-y-2 text-sm border-t border-dashed border-gray-200 pt-3 mt-3 ${!r.isValid ? 'opacity-50' : ''}">
+                     <div class="flex justify-between items-center">
+                        <span class="text-gray-500 text-xs">客户到手:</span>
+                        <span class="font-bold text-gray-700">${formatMoney(r.netAmount)}</span>
+                    </div>
+                     <div class="flex justify-between items-center">
+                        <span class="text-gray-500 text-xs">代扣个税:</span>
+                        <span class="font-medium ${r.taxAmount > 0 ? 'text-orange-500' : 'text-gray-400'}">${formatMoney(r.taxAmount)}</span>
+                    </div>
+                     <div class="flex justify-between items-center">
+                        <span class="text-gray-500 text-xs">平台服务费:</span>
+                        <span class="font-medium text-blue-500">${formatMoney(r.platformFee)}</span>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML += `
+                <div class="p-5 rounded-xl shadow-sm relative flex flex-col ${cardClass} card">
+                    <div class="flex items-center mb-3">
+                        <div class="mr-2 transform scale-90">${r.icon}</div>
+                        <div>
+                            <div class="font-bold text-gray-800 text-sm flex items-center whitespace-nowrap">${r.name} ${badge}</div>
+                            <div class="text-xs text-gray-400 truncate w-32">${r.desc}</div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                         <div class="text-2xl font-bold ${isBest ? 'text-green-600' : 'text-gray-700'}">${r.isValid ? formatMoney(r.totalCost) : '---'}</div>
+                         <div class="text-xs text-gray-400">总成本 (含税费)</div>
+                    </div>
+
+                    ${detailSection}
+                    ${footer}
+                </div>
+            `;
+        });
+    }
+
+    // --- DIY 模拟器逻辑 (保持不变) ---
+    function initManualSimulator(totalNet) {
+        document.getElementById('manual_foundation').value = '';
+        document.getElementById('manual_thirdparty').value = '';
+        document.getElementById('manual_association').value = '';
+        updateManualCalc();
+    }
+
+    function updateManualCalc() {
+        const totalNet = parseFloat(document.getElementById('netAmount').value) || 0;
+        const vFound = parseFloat(document.getElementById('manual_foundation').value) || 0;
+        const vThird = parseFloat(document.getElementById('manual_thirdparty').value) || 0;
+        const vAssoc = parseFloat(document.getElementById('manual_association').value) || 0;
+
+        const used = vFound + vThird + vAssoc;
+        const vColl = totalNet - used;
+
+        const elColl = document.getElementById('manual_collection');
+        const elError = document.getElementById('manualError');
+        
+        elError.classList.add('hidden');
+        elColl.classList.remove('bg-red-100', 'text-red-600');
+        elColl.classList.add('bg-green-100/50', 'text-green-700');
+
+        if (vColl < 0) {
+            elColl.value = "超出总额!";
+            elColl.classList.remove('bg-green-100/50', 'text-green-700');
+            elColl.classList.add('bg-red-100', 'text-red-600');
+            elError.classList.remove('hidden');
+            document.getElementById('manualTotalCost').innerText = "---";
+            return;
+        }
+
+        elColl.value = formatMoney(vColl);
+        checkMinLimit('foundation', vFound, 1000);
+        checkMinLimit('thirdparty', vThird, 800);
+        checkMinLimit('association', vAssoc, 1000);
+
+        let totalCost = 0, totalTax = 0, totalFee = 0;
+        const costs = [
+            getSinglePlatformCost(platforms.find(p=>p.id==='foundation'), vFound),
+            getSinglePlatformCost(platforms.find(p=>p.id==='thirdparty'), vThird),
+            getSinglePlatformCost(platforms.find(p=>p.id==='association'), vAssoc),
+            getSinglePlatformCost(platforms.find(p=>p.id==='collection'), vColl)
+        ];
+
+        costs.forEach(c => {
+            totalCost += c.totalCost;
+            totalTax += c.taxAmount;
+            totalFee += c.platformFee;
+        });
+
+        document.getElementById('manualTotalCost').innerText = formatMoney(totalCost);
+        document.getElementById('manualTotalNet').innerText = formatMoney(totalNet);
+        document.getElementById('manualTotalTax').innerText = formatMoney(totalTax);
+        document.getElementById('manualTotalFee').innerText = formatMoney(totalFee);
+    }
+
+    function checkMinLimit(id, val, min) {
+        const el = document.getElementById('msg_' + id);
+        if (val > 0 && val < min) el.innerText = `⚠️ 低于起付线 ¥${min}`;
+        else el.innerText = '';
+    }
+</script>
+</body>
+</html>
